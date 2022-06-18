@@ -3,7 +3,9 @@
 <div class="row hide" id="leadsDiv">
   <div class="col-12">
     <h1>{{title}}</h1>
-    <span> <b>{{totalLeads}}</b> unconverted leads</span>
+    <button @click="getLeads">View {{leadType=='converted' ? 'unconverted': 'converted'}} leads</button>&nbsp;
+    <span> <b>{{totalLeads}}</b> {{leadType}} leads</span>
+    <br><br>
     <select @change="filterLeads" name="store" id="store" class="lead-filter" v-model="select">
       <option value="*">All Locations</option>
       <option value="OKC-Memorial">Oklahoma City</option>
@@ -17,6 +19,7 @@
       <option value="Owasso">Owasso</option>
       <option value="Brookside">Brookside</option>
     </select>
+    <hr>
     <table class="lead-table">
       <thead>
         <tr class="lead-table-head">
@@ -29,11 +32,11 @@
           <th>Issue</th>
           <th>Price</th>
           <th>Contact</th>
-          <th>Delete</th>
+          <!-- <th>Delete</th> -->
         </tr>
       </thead>
       <tbody>
-        <tr v-for="lead in leads" :key="lead._id" :class="lead.converted||lead.hidden ? 'lead-hide lead-tr' : 'lead-tr'">
+        <tr v-for="lead in leads" :key="lead._id" >
           <!-- <td>{{$filters.timeAgo(lead.date)}}</td> -->
           <td><b>{{new Date(lead.date).toLocaleDateString()}}</b><br />{{$filters.timeAgo(lead.date)}}</td>
           <td>{{lead.location}}</td>
@@ -43,13 +46,14 @@
           <td>{{lead.make}} {{lead.model}}</td>
           <td>{{lead.issue}}</td>
           <td>{{lead.price||"No Quote"}}</td>
-          <td>
+          <td v-if="this.leadType == 'converted'"><b>converted</b></td>
+          <td v-if="this.leadType == 'unconverted'">
             <div class="row">
               <div class="col">
                 <label for="lead-responded">Responded</label>
               </div>
               <div class="col">
-                <input id="lead-responded" class="lead-check" type="checkbox" @click="saveLead(lead)" v-model="lead.responded">
+                <input id="lead-responded" class="lead-check"  type="checkbox" @click="saveLead(lead)" v-model="lead.responded">
               </div>
             </div>
             <div class="row">
@@ -57,11 +61,11 @@
                 <label for="lead-converted">Converted</label>
               </div>
               <div class="col">
-                <input id="lead-converted" class="lead-check" type="checkbox" @click="saveLead(lead)" v-model="lead.converted">
+                <input id="lead-converted" class="lead-check"  type="checkbox" @click="saveLead(lead)" v-model="lead.converted">
               </div>
             </div>
           </td>
-          <td @click="saveLead(lead,true)" class="lead-delete"><span class="lead-delete-text">-</span></td>
+          <!-- <td @click="saveLead(lead,true)" class="lead-delete"><span class="lead-delete-text">-</span></td> -->
         </tr>
       </tbody>
     </table>
@@ -74,6 +78,7 @@ import axios from 'axios';
 export default {
   data(){
     return{
+      leadType:'loading...',
       isLoading:true,
       title:"Leads",
       allLeads:[{}],
@@ -85,6 +90,40 @@ export default {
     LoadingScreen
   },
   methods:{
+    getLeads(){
+      if(this.leadType == 'converted' || this.leadType == 'loading...') {
+        this.isLoading = true;
+        axios
+          .get('https://pd-leads.herokuapp.com/leads')
+          // .get('http://localhost:3000/leads')
+          .then(res=>{
+            // console.log(res.data)
+            this.allLeads=res.data
+            this.leads = this.allLeads
+          })
+          .finally(()=>{
+            this.leadType = 'unconverted';
+            this.isLoading = false;
+            document.querySelector('#leadsDiv').style.display = 'block'
+          })
+      }
+      if(this.leadType == 'unconverted'){
+        this.isLoading = true;
+        axios
+          .get('https://pd-leads.herokuapp.com/convertedLeads')
+          // .get('http://localhost:3000/convertedLeads')
+          .then(res=>{
+            // console.log(res.data)
+            this.allLeads=res.data
+            this.leads = this.allLeads
+          })
+          .finally(()=>{
+            this.leadType = 'converted'
+            this.isLoading = false;
+            document.querySelector('#leadsDiv').style.display = 'block'
+          })
+      }
+    },
     filterLeads(){
       setTimeout(()=>{this.select !== "*" ? this.leads = this.allLeads.filter(lead=>lead.location === this.select) : this.leads = this.allLeads},1)
     },
@@ -105,18 +144,7 @@ export default {
     }
   },
   mounted(){
-    axios
-      .get('https://pd-leads.herokuapp.com/leads')
-      // .get('http://localhost:3000/leads')
-      .then(res=>{
-        // console.log(res.data)
-        this.allLeads=res.data
-        this.leads = this.allLeads
-      })
-      .finally(()=>{
-        this.isLoading = false;
-        document.querySelector('#leadsDiv').style.display = 'block'
-      })
+    this.getLeads()
   }
 };
 </script>

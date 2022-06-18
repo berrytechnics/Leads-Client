@@ -20,6 +20,7 @@ export default {
     Leads,
   },
   mounted(){
+    
   }
 }; 
 </script>
